@@ -1,0 +1,15 @@
+web:
+  image: massmux/php
+  ports:
+    - "9000:80"
+    - "2222:22"
+  volumes:
+    - /opt/docker/standard/wordpress/html:/var/www/html
+  environment:
+    APP: wordpress
+    DOWNLOAD: https://github.com/WordPress/WordPress.git
+    CONTAINER_ROOT_PASS: test456
+    AUTHORIZED_KEYS: <yourkeyhere>
+    SSMTP_AUTHUSER: test@test.com
+    SSMTP_AUTHPASS: 123456
+    SSMTP_MAILHUB: gw@example.com
