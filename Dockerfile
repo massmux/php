@@ -1,4 +1,4 @@
-FROM denali/debian
+FROM massmux/debian
 MAINTAINER Massimo Musumeci <massmux@denali.uk>
 
 # Install base packages apache php ssmtp
