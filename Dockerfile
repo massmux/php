@@ -1,4 +1,4 @@
-FROM massmux/debian
+FROM denali/debian
 MAINTAINER Massimo Musumeci <massmux@denali.uk>
 
 # Install base packages apache php ssmtp
@@ -20,34 +20,36 @@ RUN apt-get update && \
 	libapache2-mod-fcgid \
 	libapache2-mod-python \
         ssmtp \
-        php-apc &&\
-    rm -rf /var/lib/apt/lists/*
+        php-apc \
+	pwgen \
+	php-apc &&\
+	echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
 
-RUN sed -i "s/variables_order.*/variables_order = \"EGPCS\"/g" /etc/php5/apache2/php.ini && \
-   sed -i "s/upload_max_filesize.*/upload_max_filesize = 64M/g" /etc/php5/apache2/php.ini && \
-   sed -i "s/memory_limit.*/memory_limit = 256M/g" /etc/php5/apache2/php.ini && \
-   sed -i "s/post_max_size.*/post_max_size = 128M/g" /etc/php5/apache2/php.ini && \
-   curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer && \
-   echo "<?php phpinfo(); ?>" > /var/www/html/info.php && \
-   chown -R www-data:www-data /var/www/html
+# config to enable .htaccess
+ADD ./src/apache_default /etc/apache2/sites-available/000-default.conf
+RUN a2enmod rewrite
 
 # install composer
 RUN curl -sS https://getcomposer.org/installer | php
 
 ## copy files
 COPY ./src /src/
-RUN  mv /src/rewrite.load /etc/apache2/mods-enabled/rewrite.load && \
-     mv /src/000-default /etc/apache2/sites-enabled/000-default && \
-     mv /src/ssmtp.conf /etc/ssmtp/ssmtp.conf && \
+RUN  mv /src/ssmtp.conf /etc/ssmtp/ssmtp.conf && \
      mv /src/run.sh /run.sh && \
      mv /src/supervisord.conf /etc/supervisor/conf.d/supervisord.conf && \
      chmod +x /run.sh
+
 
 # Password ssmtp
 ENV SSMTP_AUTHUSER test@test.com
 ENV SSMTP_AUTHPASS 123456
 ENV SSMTP_MAILHUB gw@example.com
+
+#Enviornment variables to configure php
+ENV PHP_UPLOAD_MAX_FILESIZE 50M
+ENV PHP_POST_MAX_SIZE 50M
+ENV PHP_MEMORY_LIMIT 256M
 
 # port exposed
 EXPOSE 80 22
