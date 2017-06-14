@@ -1,15 +1,44 @@
-web:
-  image: massmux/php
-  ports:
-    - "9000:80"
-    - "2222:22"
-  volumes:
-    - /opt/docker/standard/wordpress/html:/var/www/html
-  environment:
-    APP: wordpress
-    DOWNLOAD: https://github.com/WordPress/WordPress.git
-    CONTAINER_ROOT_PASS: test456
-    AUTHORIZED_KEYS: <yourkeyhere>
-    SSMTP_AUTHUSER: test@test.com
-    SSMTP_AUTHPASS: 123456
-    SSMTP_MAILHUB: gw@example.com
+version: '2'
+volumes:
+    apache2:
+    html:
+    letsencrypt:
+    MysqlData:
+
+services:
+  web:
+    image: massmux/php
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2222:22"
+    links:
+      - mysql
+    volumes:
+      - html:/var/www/html
+      - letsencrypt:/etc/letsencrypt
+      - apache2:/etc/apache2
+    environment:
+      APP: wordpress
+      DOWNLOAD: https://wordpress.org/latest.tar.gz
+      CONTAINER_ROOT_PASS: <yourpass>
+      AUTHORIZED_KEYS: <yourkey>
+      DB_ROOT_PASS: jdskSgvS2apzkIzQ99
+      SSMTP_AUTHUSER: test@test.com
+      SSMTP_AUTHPASS: 123456
+      SSMTP_MAILHUB: gw@example.com
+      LETSENC_EMAIL: <youremail>
+      LETSENC_DOM: <yourdomain>
+
+  mysql:
+    image: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: <mysqlrootpass>
+      MYSQL_DATABASE: "wordpress"
+
+    volumes:
+      - ./mysql_entrypoint:/docker-entrypoint-initdb.d
+      - ./mysql_conf:/etc/mysql/conf.d
+      - MysqlData:/var/lib/mysql

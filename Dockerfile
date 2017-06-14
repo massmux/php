@@ -1,58 +1,60 @@
-FROM denali/debian
+FROM massmux/debian:latest
 MAINTAINER Massimo Musumeci <massmux@denali.uk>
+LABEL php.version="1.0"
+LABEL vendor="TRITEMA SA"
 
-# Install base packages apache php ssmtp
+# Install base php,apache,letsencrypt
 ENV DEBIAN_FRONTEND noninteractive
-RUN apt-get update && \
-    apt-get -yq install \
-        apache2 \
-        libapache2-mod-php5 \
-        php5-mysql \
-        php5-gd \
-        php5-curl \
-        php-pear \
-	php5-mcrypt \
-	php5-imagick \
-	php5-fpm \
-	apache2-prefork-dev \
-	apache2-suexec \
-	libapache2-mod-dnssd \
-	libapache2-mod-fcgid \
-	libapache2-mod-python \
-        ssmtp \
-        php-apc \
-	pwgen \
-	php-apc &&\
-	echo "ServerName localhost" >> /etc/apache2/apache2.conf
 
+# install apache & php
+RUN 	apt-get update &&\
+	apt-get -yq install apache2 apache2.2-common apache2-doc apache2-mpm-prefork apache2-utils libexpat1 ssl-cert libapache2-mod-php5 php5 php5-common php5-gd php5-mysql php5-imap phpmyadmin php5-cli php5-cgi libapache2-mod-fcgid apache2-suexec php-pear php-auth php5-mcrypt mcrypt php5-imagick imagemagick libruby libapache2-mod-python php5-curl php5-intl php5-memcache php5-memcached php5-pspell php5-recode php5-sqlite php5-tidy php5-xmlrpc php5-xsl memcached libapache2-mod-passenger ssmtp pwgen wget rsyslog cron
 
-# config to enable .htaccess
+# --- Synchronize the System Clock
+RUN apt-get -y install ntp ntpdate
+
+# install hhvm
+RUN apt-key adv --recv-keys --keyserver hkp://keyserver.ubuntu.com:80 0x5a16e7281be7a449
+RUN echo deb http://dl.hhvm.com/debian jessie main | tee /etc/apt/sources.list.d/hhvm.list
+RUN apt-get update && apt-get -yq install hhvm
+
+# config apache
 ADD ./src/apache_default /etc/apache2/sites-available/000-default.conf
-RUN a2enmod rewrite
+RUN echo "ServerName localhost" >> /etc/apache2/apache2.conf
+
+# enable modules
+RUN a2enmod suexec rewrite ssl actions include dav_fs dav auth_digest cgi headers
 
 # install composer
 RUN curl -sS https://getcomposer.org/installer | php
 
+# install letsencrypt
+RUN mkdir /opt/certbot &&\
+        cd /opt/certbot &&\
+        wget https://dl.eff.org/certbot-auto &&\
+	chmod +x /opt/certbot/certbot-auto
+
+
 ## copy files
 COPY ./src /src/
-RUN  mv /src/ssmtp.conf /etc/ssmtp/ssmtp.conf && \
-     mv /src/run.sh /run.sh && \
-     mv /src/supervisord.conf /etc/supervisor/conf.d/supervisord.conf && \
+RUN  mv /src/run.sh /run.sh && \
      chmod +x /run.sh
 
-
-# Password ssmtp
+# ssmtp
 ENV SSMTP_AUTHUSER test@test.com
 ENV SSMTP_AUTHPASS 123456
 ENV SSMTP_MAILHUB gw@example.com
 
-#Enviornment variables to configure php
+# php variables
 ENV PHP_UPLOAD_MAX_FILESIZE 50M
 ENV PHP_POST_MAX_SIZE 50M
 ENV PHP_MEMORY_LIMIT 256M
 
 # port exposed
-EXPOSE 80 22
+EXPOSE 80 22 443
 
-# running setup commands + supervisord
+# volumes
+VOLUME ["/etc/apache2", "/var/www/html", "/etc/letsencrypt"]
+
+# entrypoint
 CMD ["/run.sh"]
